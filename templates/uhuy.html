@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Garden</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f3f0e7;
+            padding: 20px;
+        }
+        h1 { text-align: center; font-size: 32px; }
+
+        /* Layout 2 kolom */
+        .row {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: #fff;
+            padding: 22px;
+            border-radius: 15px;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 5px 20px #00000025;
+        }
+
+        .value { font-size: 45px; font-weight: bold; }
+        .sub { opacity: .7; font-size: 16px; }
+
+        .kat-box {
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 22px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+        .kering { background:#ffb3b3; color:#a00000; }
+        .lembab { background:#fff0b3; color:#997a00; }
+        .basah { background:#b3e6b3; color:#006600; }
+
+        /* buttons */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            margin: 5px;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .on { background: #4caf50; }
+        .off { background: #d63030; }
+        .auto { background: #3f51b5; }
+
+        #mode {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            padding: 8px;
+            border-radius: 10px;
+        }
+        .manual { background: #ffcccc; color:#990000; }
+        .autoMode { background: #cce0ff; color:#003d99; }
+    </style>
+</head>
+<body>
+
+<h1>🌱 Smart Garden Monitoring</h1>
+
+<div class="row">
+
+    <!-- CARD SENSOR -->
+    <div class="card">
+        <div class="value" id="nilai">--</div>
+        <div class="sub">Kelembapan Tanah</div>
+
+        <div id="kategoriBox" class="kat-box">--</div>
+
+        <br>
+        <div class="sub">Status Pompa:</div>
+        <div class="value" id="relay">--</div>
+
+        <div class="sub">Terakhir berubah:</div>
+        <div id="waktu">--</div>
+
+        <div id="mode" class="">Mode: --</div>
+
+        <br>
+        <button class="btn on" onclick="relayOn()">Manual ON</button>
+        <button class="btn off" onclick="relayOff()">Manual OFF</button>
+        <button class="btn auto" onclick="relayAuto()">Auto</button>
+    </div>
+
+    <!-- GRAFIK -->
+    <div>
+        <canvas id="chart" width="400" height="300"></canvas>
+    </div>
+
+</div>
+
+<script>
+const ctx = document.getElementById("chart").getContext("2d");
+
+const chart = new Chart(ctx, {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [{
+            label: "Kelembapan Tanah",
+            data: [],
+            borderColor: "#2e7d32",
+            borderWidth: 3
+        }]
+    }
+});
+
+// Ubah warna kategori
+function setKategori(kat) {
+    let box = document.getElementById("kategoriBox");
+
+    if (kat === "Kering") box.className = "kat-box kering";
+    else if (kat === "Lembab") box.className = "kat-box lembab";
+    else box.className = "kat-box basah";
+
+    box.innerText = kat;
+}
+
+function setMode(manual) {
+    let m = document.getElementById("mode");
+
+    if (manual) {
+        m.className = "manual";
+        m.innerText = "Mode: MANUAL";
+    } else {
+        m.className = "autoMode";
+        m.innerText = "Mode: AUTO";
+    }
+}
+
+async function update() {
+    let res = await fetch("/api/data");
+    let data = await res.json();
+
+    document.getElementById("nilai").innerText = data.soil;
+    document.getElementById("relay").innerText = data.relay;
+    document.getElementById("waktu").innerText = data.waktu;
+
+    setKategori(data.kategori);
+    setMode(data.mode_manual);
+
+    let t = new Date().toLocaleTimeString();
+    chart.data.labels.push(t);
+    chart.data.datasets[0].data.push(data.soil);
+
+    if (chart.data.labels.length > 20) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update();
+}
+
+// tombol manual + auto
+async function relayOn()  { await fetch("/api/relay/on"); }
+async function relayOff() { await fetch("/api/relay/off"); }
+async function relayAuto(){ await fetch("/api/relay/auto"); }
+
+setInterval(update, 1000);
+update();
+</script>
+
+</body>
+</html>
