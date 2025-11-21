@@ -71,7 +71,7 @@ app = Microdot()
 
 @app.route("/")
 def index(request):
-    return send_file("templates/uhuy.html")
+    return send_file("index.html")
 
 @app.route("/api/data")
 def api_data(request):
